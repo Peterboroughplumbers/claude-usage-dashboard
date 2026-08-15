@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claude Usage Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="titlebar">
+      <div class="title">
+        <span class="logo" aria-hidden="true"></span>
+        <span>Claude Usage Dashboard</span>
+      </div>
+      <div class="titlebar-actions">
+        <button id="btn-refresh" class="icon-btn" title="Refresh all accounts" aria-label="Refresh">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.74 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
+        <button id="btn-pin" class="icon-btn" title="Pin on top of other windows" aria-label="Pin on top" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 3v2h-1v6l2 3v2h-4v5l-1 2-1-2v-5H7v-2l2-3V5H8V3h8z"/></svg>
+        </button>
+        <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.73 8.47a.5.5 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+        </button>
+        <button id="btn-minimize" class="icon-btn" title="Minimize" aria-label="Minimize">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M5 12h14v2H5z"/></svg>
+        </button>
+        <button id="btn-close" class="icon-btn danger" title="Close" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.3 19.71 2.89 18.3 9.17 12 2.89 5.71 4.3 4.29l6.29 6.3 6.3-6.3z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="bg" class="bg" aria-hidden="true"></div>
+    <main id="main">
+      <section id="recommended" class="recommended" hidden></section>
+      <section id="accounts" class="accounts"></section>
+      <button id="btn-add-account" class="btn small add-account" type="button">＋ Add account</button>
+      <p id="notice" class="notice" hidden></p>
+    </main>
+
+    <footer class="footer">
+      <span id="last-updated">Last updated: –</span>
+      <span id="auto-refresh"></span>
+    </footer>
+
+    <section id="settings" class="settings" hidden>
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button id="btn-settings-close" class="icon-btn" title="Close settings" aria-label="Close settings">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.3 19.71 2.89 18.3 9.17 12 2.89 5.71 4.3 4.29l6.29 6.3 6.3-6.3z"/></svg>
+        </button>
+      </div>
+      <form id="settings-form">
+        <fieldset>
+          <legend>Accounts</legend>
+          <div id="account-names"></div>
+          <small>Removing an account deletes its saved login (browser profile) from this PC.</small>
+        </fieldset>
+        <fieldset>
+          <legend>Refresh</legend>
+          <label>Auto refresh every
+            <span class="inline"><input type="number" name="interval" min="0" max="1440" step="1" required /> min</span>
+          </label>
+          <small>0 disables auto refresh.</small>
+        </fieldset>
+        <fieldset>
+          <legend>Window</legend>
+          <label class="check"><input type="checkbox" name="launchAtStartup" /> Launch when Windows starts</label>
+          <label class="check"><input type="checkbox" name="alwaysOnTop" /> Always on top</label>
+          <label class="check"><input type="checkbox" name="minimizeToTray" /> Minimize to system tray</label>
+          <label class="check"><input type="checkbox" name="showBrowserOnRefresh" /> Show browser during refresh (debug)</label>
+          <label>Transparency
+            <span class="inline"><input type="range" name="windowOpacity" min="30" max="100" step="5" /> <span id="opacity-value" class="range-value">100%</span></span>
+          </label>
+          <small>Lower = more see-through (desktop shows behind the widget).</small>
+        </fieldset>
+        <div class="settings-actions">
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+        <p class="about">
+          <span id="about-browser"></span><br />
+          <span id="about-version"></span><br />
+          Sessions are stored locally in the app profile folder. Passwords are never collected.
+        </p>
+      </form>
+    </section>
+
+    <script src="renderer.js" type="module"></script>
+  </body>
+</html>

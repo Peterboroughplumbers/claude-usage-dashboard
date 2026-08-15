@@ -1,0 +1,28 @@
+appId: com.pickigo.claude-usage-dashboard
+productName: Claude Usage Dashboard
+copyright: Copyright © 2026
+directories:
+  output: release
+  buildResources: assets
+files:
+  - dist/**/*
+  - assets/**/*
+  - package.json
+  - "!**/*.map"
+asar: true
+asarUnpack:
+  - node_modules/playwright-core/**
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/icon.png
+  artifactName: "${productName}-Setup-${version}.${ext}"
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Claude Usage Dashboard
+  deleteAppDataOnUninstall: false

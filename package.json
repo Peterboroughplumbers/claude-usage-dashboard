@@ -1,0 +1,42 @@
+{
+  "name": "claude-usage-dashboard",
+  "productName": "Claude Usage Dashboard",
+  "version": "1.0.0",
+  "description": "Compact Windows desktop widget showing usage of multiple Claude accounts",
+  "main": "dist/main/index.js",
+  "author": "Pickigo",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "clean": "rimraf dist release",
+    "build:ts": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json && tsc -p tsconfig.renderer.json",
+    "copy:static": "node scripts/copy-static.mjs",
+    "compile": "npm run build:ts && npm run copy:static",
+    "dev": "npm run compile && cross-env NODE_ENV=development electron .",
+    "start": "npm run compile && electron .",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.renderer.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run",
+    "build": "npm run clean && npm run compile && electron-builder --win",
+    "make-icon": "node scripts/make-icon.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "1.62.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^24.13.3",
+    "cross-env": "^7.0.3",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.39.5",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "electron@43.4.0": true,
+    "electron-winstaller@5.4.0": true
+  }
+}
