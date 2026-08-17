@@ -1,6 +1,7 @@
 /* ==========================================================================
-   Claude Usage Dashboard — "HUD" theme
-   Dark glass panels, neon status colours, animated gradient bars, ring gauges.
+   Claude Usage Dashboard — "Cockpit" theme
+   Car-cluster look: carbon-fibre panels, chrome-bezel speedometers with needles,
+   LED-segment bars, neon status colours.
    No external assets (strict CSP): everything is CSS + inline SVG.
    ========================================================================== */
 :root {
@@ -23,8 +24,10 @@
   --near: #ff4d6d;
   --track: rgba(255, 255, 255, 0.06);
   --radius: 14px;
-  --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --mono: 'Cascadia Mono', 'Consolas', 'Segoe UI Mono', ui-monospace, monospace;
+  --font: 'Bahnschrift', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: 'Bahnschrift SemiBold Condensed', 'Bahnschrift', 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
+  --chrome-hi: #cfd6e6;
+  --chrome-lo: #4a5266;
 }
 
 * {
@@ -59,10 +62,17 @@ body {
   pointer-events: none;
   opacity: var(--alpha);
   background:
-    radial-gradient(120% 80% at 110% -10%, rgba(124, 92, 255, 0.28), transparent 60%),
-    radial-gradient(90% 70% at -20% 110%, rgba(56, 232, 255, 0.18), transparent 60%),
-    radial-gradient(70% 50% at 50% 50%, rgba(255, 122, 69, 0.08), transparent 70%),
-    linear-gradient(180deg, var(--bg-2), var(--bg));
+    radial-gradient(120% 80% at 110% -10%, rgba(255, 77, 109, 0.16), transparent 60%),
+    radial-gradient(90% 70% at -20% 110%, rgba(56, 232, 255, 0.14), transparent 60%),
+    /* carbon-fibre weave */
+    linear-gradient(27deg, #151922 5px, transparent 5px) 0 5px,
+    linear-gradient(207deg, #151922 5px, transparent 5px) 10px 0,
+    linear-gradient(27deg, #0f131b 5px, transparent 5px) 0 10px,
+    linear-gradient(207deg, #0f131b 5px, transparent 5px) 10px 5px,
+    linear-gradient(90deg, #171b25 10px, transparent 10px),
+    linear-gradient(#0c1017 25%, #12161f 25%, #12161f 50%, transparent 50%, transparent 75%, #12161f 75%, #12161f);
+  background-color: #0b0e15;
+  background-size: 100% 100%, 100% 100%, 20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px, 20px 20px;
   transition: opacity 0.2s;
 }
 
@@ -245,16 +255,37 @@ main::-webkit-scrollbar-thumb {
 .recommended {
   position: relative;
   overflow: hidden;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'gauge left' 'gauge right';
+  row-gap: 2px;
   background: linear-gradient(135deg, rgba(53, 240, 166, calc(0.16 * var(--alpha) + 0.04)), rgba(56, 232, 255, calc(0.06 * var(--alpha))) 60%, var(--panel));
   border: 1px solid rgba(53, 240, 166, 0.45);
   border-radius: var(--radius);
-  padding: 10px 14px;
-  display: flex;
+  padding: 8px 12px 8px 8px;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   box-shadow: 0 0 0 1px rgba(53, 240, 166, 0.08) inset, 0 0 28px rgba(53, 240, 166, 0.14);
 }
+
+.rec-gauge { grid-area: gauge; }
+.rec-left { grid-area: left; min-width: 0; }
+.rec-right {
+  grid-area: right;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  text-align: left;
+  min-width: 0;
+}
+.rec-right .rec-term {
+  margin: 0 0 0 auto;
+  align-self: center;
+  white-space: nowrap;
+  padding: 3px 8px;
+}
+.recommended.none { display: flex; }
 
 .recommended.enter {
   animation: rise 0.4s ease-out both;
@@ -312,7 +343,10 @@ main::-webkit-scrollbar-thumb {
 }
 
 .recommended .name {
-  font-size: 17px;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 800;
   letter-spacing: 0.3px;
   margin-top: 2px;
@@ -334,6 +368,7 @@ main::-webkit-scrollbar-thumb {
 }
 
 .recommended .sub {
+  white-space: nowrap;
   color: var(--muted);
   font-size: 10.5px;
   letter-spacing: 0.4px;
@@ -433,7 +468,12 @@ main::-webkit-scrollbar-thumb {
 .card-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.card-head .badge {
+  align-self: flex-start;
+  margin-top: 4px;
 }
 
 .card-names {
@@ -458,71 +498,163 @@ main::-webkit-scrollbar-thumb {
   white-space: nowrap;
 }
 
-/* Ring gauge */
-.ring {
+/* ---------- Speedometer gauge ---------- */
+.speedo {
   position: relative;
-  width: 40px;
-  height: 40px;
   flex: none;
+  width: 84px;
+  height: 84px;
 }
 
-.ring svg {
-  width: 40px;
-  height: 40px;
-  transform: rotate(-90deg);
+.speedo.big {
+  width: 104px;
+  height: 104px;
 }
 
-.ring-track {
-  fill: none;
-  stroke: var(--track);
-  stroke-width: 3.5;
+.speedo svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.ring-fill {
-  fill: none;
-  stroke-width: 3.5;
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.ring-fill.none {
-  stroke: transparent;
-}
-.ring-fill.available {
-  stroke: var(--available);
-  filter: drop-shadow(0 0 4px rgba(53, 240, 166, 0.8));
-}
-.ring-fill.medium {
-  stroke: var(--medium);
-  filter: drop-shadow(0 0 4px rgba(255, 209, 102, 0.8));
-}
-.ring-fill.high {
-  stroke: var(--high);
-  filter: drop-shadow(0 0 4px rgba(255, 159, 67, 0.8));
-}
-.ring-fill.near_limit {
-  stroke: var(--near);
-  filter: drop-shadow(0 0 5px rgba(255, 77, 109, 0.9));
-  animation: blink 1.2s ease-in-out infinite;
-}
-
-@keyframes blink {
-  50% {
-    opacity: 0.55;
-  }
-}
-
-.ring-value {
+.speedo::before {
+  /* brushed-chrome bezel ring, sits under the SVG */
+  content: '';
   position: absolute;
-  inset: 0;
+  left: 2%;
+  top: 6%;
+  width: 96%;
+  height: 96%;
+  border-radius: 50%;
+  background: conic-gradient(from 200deg, var(--chrome-hi), var(--chrome-lo) 25%, #8b94aa 40%, var(--chrome-lo) 60%, var(--chrome-hi) 80%, var(--chrome-lo));
+  -webkit-mask: radial-gradient(circle, transparent 86%, #000 87%);
+  mask: radial-gradient(circle, transparent 86%, #000 87%);
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.sp-bezel {
+  fill: none;
+  stroke: #232937;
+  stroke-width: 2.4;
+}
+
+.sp-face {
+  fill: rgba(6, 8, 14, calc(0.85 * var(--alpha) + 0.1));
+  stroke: rgba(207, 214, 230, 0.3);
+  stroke-width: 0.6;
+}
+
+.sp-zone {
+  fill: none;
+  stroke-width: 2.4;
+  opacity: 0.35;
+}
+.sp-zone.available { stroke: var(--available); }
+.sp-zone.medium { stroke: var(--medium); }
+.sp-zone.high { stroke: var(--high); }
+.sp-zone.near_limit { stroke: var(--near); opacity: 0.65; }
+
+.sp-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 5.5;
+}
+
+.sp-fill {
+  fill: none;
+  stroke-width: 5.5;
+}
+.sp-fill.available { stroke: var(--available); filter: drop-shadow(0 0 4px rgba(53, 240, 166, 0.9)); }
+.sp-fill.medium { stroke: var(--medium); filter: drop-shadow(0 0 4px rgba(255, 209, 102, 0.9)); }
+.sp-fill.high { stroke: var(--high); filter: drop-shadow(0 0 4px rgba(255, 159, 67, 0.9)); }
+.sp-fill.near_limit { stroke: var(--near); filter: drop-shadow(0 0 6px rgba(255, 77, 109, 1)); animation: blink 1.2s ease-in-out infinite; }
+
+.sp-ticks line {
+  stroke: rgba(230, 236, 255, 0.55);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+}
+.sp-ticks line.major {
+  stroke: #eef2ff;
+  stroke-width: 1.6;
+}
+.sp-num {
+  fill: rgba(230, 236, 255, 0.7);
+  font-family: var(--font);
+  font-size: 7px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.sp-needle {
+  transform-origin: 0 0;
+  transform-box: view-box;
+  transition: transform 1.1s cubic-bezier(0.34, 1.4, 0.44, 1);
+}
+.sp-needle polygon {
+  fill: #ff3b5c;
+  filter: drop-shadow(0 0 3px rgba(255, 59, 92, 0.9));
+}
+.sp-needle .sp-needle-tail {
+  fill: #b8c0d4;
+  filter: none;
+}
+.sp-needle.none polygon {
+  fill: #5c6478;
+  filter: none;
+}
+
+.sp-hub {
+  fill: #1a1f2b;
+  stroke: var(--chrome-hi);
+  stroke-width: 1.2;
+}
+.sp-hub-dot {
+  fill: #ff3b5c;
+}
+
+.sp-read {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 63%;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: baseline;
+  gap: 1px;
   font-family: var(--mono);
-  font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: #eef2ff;
+  text-shadow: 0 0 8px rgba(56, 232, 255, 0.55);
+  pointer-events: none;
 }
+.sp-val { font-size: 15px; letter-spacing: 0.5px; }
+.sp-unit { font-size: 8px; opacity: 0.7; }
+.speedo.big .sp-val { font-size: 22px; }
+.speedo.big .sp-unit { font-size: 10px; }
+.sp-read.available { color: var(--available); text-shadow: 0 0 10px rgba(53, 240, 166, 0.6); }
+.sp-read.medium { color: var(--medium); text-shadow: 0 0 10px rgba(255, 209, 102, 0.6); }
+.sp-read.high { color: var(--high); text-shadow: 0 0 10px rgba(255, 159, 67, 0.6); }
+.sp-read.near_limit { color: var(--near); text-shadow: 0 0 12px rgba(255, 77, 109, 0.8); }
+.sp-read.none { color: var(--muted); text-shadow: none; }
+
+.sp-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 85%;
+  text-align: center;
+  font-size: 6.5px;
+  letter-spacing: 1.6px;
+  color: var(--muted);
+  font-weight: 700;
+  pointer-events: none;
+}
+.speedo.big .sp-cap { font-size: 8px; }
 
 /* Badges */
 .badge {
@@ -622,11 +754,19 @@ main::-webkit-scrollbar-thumb {
 
 .bar {
   position: relative;
-  height: 6px;
+  height: 8px;
   background: var(--track);
-  border-radius: 999px;
+  border-radius: 2px;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* LED-segment mask: dark gaps so the fill reads as lit segments */
+.bar > .bar-segs {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 5px, var(--bg) 5px 7px);
+  pointer-events: none;
 }
 
 .bar > span {
@@ -634,7 +774,7 @@ main::-webkit-scrollbar-thumb {
   display: block;
   height: 100%;
   width: 0;
-  border-radius: 999px;
+  border-radius: 1px;
   background-size: 200% 100%;
 }
 

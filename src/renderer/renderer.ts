@@ -88,36 +88,102 @@ function metric(label: string, value: number | null): HTMLElement {
     fill.style.width = `${Math.max(0, Math.min(100, value))}%`;
   }
   bar.append(fill);
+  bar.append(el('i', 'bar-segs')); // LED segment mask on top
   row.append(bar);
   row.append(el('span', 'metric-value', fmtPercent(value)));
   return row;
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const RING_R = 17;
-const RING_C = 2 * Math.PI * RING_R;
 
-/** Small circular gauge showing the account's effective (highest) usage. */
-function ringGauge(percent: number | null): HTMLElement {
-  const wrap = el('div', 'ring');
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 40 40');
-  const track = document.createElementNS(SVG_NS, 'circle');
-  track.setAttribute('class', 'ring-track');
-  track.setAttribute('cx', '20');
-  track.setAttribute('cy', '20');
-  track.setAttribute('r', String(RING_R));
-  svg.append(track);
+/* ------------------------- speedometer gauge (SVG) ------------------------ */
+
+const GAUGE_START = 150; // degrees, clockwise from 3 o'clock → bottom-left
+const GAUGE_SWEEP = 240; // degrees of arc (like a car cluster)
+const CX = 50;
+const CY = 54;
+
+function polar(r: number, deg: number): [number, number] {
+  const a = (deg * Math.PI) / 180;
+  return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+}
+
+function arcPath(r: number, fromPct: number, toPct: number): string {
+  const a0 = GAUGE_START + (GAUGE_SWEEP * fromPct) / 100;
+  const a1 = GAUGE_START + (GAUGE_SWEEP * toPct) / 100;
+  const [x0, y0] = polar(r, a0);
+  const [x1, y1] = polar(r, a1);
+  const large = a1 - a0 > 180 ? 1 : 0;
+  return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+
+function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+  return e;
+}
+
+/** Zones along the dial, matching the status thresholds (0–49 / 50–79 / 80–94 / 95–100). */
+const ZONES: Array<[number, number, string]> = [
+  [0, 50, 'available'],
+  [50, 80, 'medium'],
+  [80, 95, 'high'],
+  [95, 100, 'near_limit'],
+];
+
+/**
+ * Car-cluster style speedometer. `percent` = usage (0 = empty tank of usage, 100 = red line).
+ * `size` = "big" for the recommended panel, "card" for account cards.
+ */
+function speedo(percent: number | null, size: 'card' | 'big', caption: string): HTMLElement {
+  const wrap = el('div', `speedo ${size}`);
+  const svg = svgEl('svg', { viewBox: '0 0 100 100', 'aria-hidden': 'true' });
+
+  // Bezel + dial face
+  svg.append(svgEl('circle', { class: 'sp-bezel', cx: CX, cy: CY, r: 47 }));
+  svg.append(svgEl('circle', { class: 'sp-face', cx: CX, cy: CY, r: 43 }));
+
+  // Coloured zones (thin outer band)
+  for (const [a, b, cls] of ZONES) svg.append(svgEl('path', { class: `sp-zone ${cls}`, d: arcPath(40, a, b) }));
+
+  // Tick marks: minor every 5 %, major every 25 %
+  const ticks = svgEl('g', { class: 'sp-ticks' });
+  for (let v = 0; v <= 100; v += 5) {
+    const major = v % 25 === 0;
+    const ang = GAUGE_START + (GAUGE_SWEEP * v) / 100;
+    const [x1, y1] = polar(major ? 30 : 33, ang);
+    const [x2, y2] = polar(37, ang);
+    ticks.append(svgEl('line', { class: major ? 'major' : 'minor', x1: x1.toFixed(2), y1: y1.toFixed(2), x2: x2.toFixed(2), y2: y2.toFixed(2) }));
+    if (major && size === 'big') {
+      const [tx, ty] = polar(24, ang);
+      const num = svgEl('text', { class: 'sp-num', x: tx.toFixed(1), y: ty.toFixed(1) });
+      num.textContent = String(v);
+      ticks.append(num);
+    }
+  }
+  svg.append(ticks);
+
+  // Track + lit arc up to the value
+  svg.append(svgEl('path', { class: 'sp-track', d: arcPath(40, 0, 100) }));
   const p = percent === null ? 0 : Math.max(0, Math.min(100, percent));
-  const fill = document.createElementNS(SVG_NS, 'circle');
-  fill.setAttribute('class', `ring-fill ${percent === null ? 'none' : statusForPercent(percent)}`);
-  fill.setAttribute('cx', '20');
-  fill.setAttribute('cy', '20');
-  fill.setAttribute('r', String(RING_R));
-  fill.setAttribute('stroke-dasharray', `${(p / 100) * RING_C} ${RING_C}`);
-  svg.append(fill);
+  const status = percent === null ? 'none' : statusForPercent(percent);
+  if (percent !== null && p > 0) svg.append(svgEl('path', { class: `sp-fill ${status}`, d: arcPath(40, 0, p) }));
+
+  // Needle
+  const needle = svgEl('g', { class: `sp-needle ${status}` });
+  needle.style.transform = `translate(${CX}px, ${CY}px) rotate(${GAUGE_START + (GAUGE_SWEEP * p) / 100}deg)`;
+  needle.append(svgEl('polygon', { points: '0,-1.6 36,-0.4 36,0.4 0,1.6' }));
+  needle.append(svgEl('polygon', { class: 'sp-needle-tail', points: '0,-1.6 -7,-0.8 -7,0.8 0,1.6' }));
+  svg.append(needle);
+  svg.append(svgEl('circle', { class: 'sp-hub', cx: CX, cy: CY, r: 4.2 }));
+  svg.append(svgEl('circle', { class: 'sp-hub-dot', cx: CX, cy: CY, r: 1.4 }));
+
   wrap.append(svg);
-  wrap.append(el('span', 'ring-value', percent === null ? '–' : `${Math.round(percent)}`));
+  const read = el('div', `sp-read ${status}`);
+  read.append(el('span', 'sp-val', percent === null ? '--' : String(Math.round(percent))));
+  read.append(el('span', 'sp-unit', '%'));
+  wrap.append(read);
+  wrap.append(el('div', 'sp-cap', caption));
   return wrap;
 }
 
@@ -127,7 +193,7 @@ function renderCard(a: AccountState, recommendedId: number | null, now: number):
   card.style.setProperty('--i', String(a.id - 1));
 
   const head = el('div', 'card-head');
-  head.append(ringGauge(a.error === 'login_required' ? null : effectivePercent(a)));
+  head.append(speedo(a.error === 'login_required' ? null : effectivePercent(a), 'card', 'USED'));
   const names = el('div', 'card-names');
   const nameEl = el('div', 'card-name', a.name);
   names.append(nameEl);
@@ -321,6 +387,9 @@ function render(): void {
       right.append(el('div', 'big', `${Math.round(100 - p)}%`));
       right.append(el('div', 'sub', 'capacity left'));
     }
+    const gauge = el('div', 'rec-gauge');
+    gauge.append(speedo(p, 'big', 'USAGE'));
+    recEl.append(gauge);
     if (state.claudeCliFound) {
       const tb = button('>_ Terminal', 'btn primary small rec-term', () => void openTerminal(rec.id), rec.terminalBusy || rec.windowOpen);
       tb.title = `Open Claude Code as ${rec.name}`;

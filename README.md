@@ -52,6 +52,8 @@ npm run build        # production build -> release/Claude Usage Dashboard-Setup-
 4. **Open Claude** opens `claude.ai` in that account's profile. While a window
    for an account is open, background refresh for that account is paused.
 
+Each account is shown as a car-cluster style speedometer (needle + red-line zone) with LED-segment bars for session / weekly / model usage.
+
 Status rules: 0–49 % Available · 50–79 % Medium · 80–94 % High · 95–100 % Near Limit.
 The status uses the *highest* of the account's known percentages (session,
 weekly, Sonnet weekly). The recommended account is the readable account with
