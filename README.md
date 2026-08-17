@@ -77,7 +77,7 @@ three accounts can be used side by side without logging in/out.
 
 ## Settings
 
-Rename accounts · refresh interval · launch at Windows startup · always on
+Rename accounts · refresh interval · launch at Windows startup · **auto-hide at the right screen edge** (widget stays hidden and slides in when the mouse touches the right edge; leaves again ~0.7 s after the mouse moves away; the tray icon always shows it) · always on
 top · minimize to tray · show browser during refresh (debug).
 
 ## Project structure

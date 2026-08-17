@@ -139,5 +139,6 @@ export function sanitizeSettings(input: unknown): Settings {
     windowOpacity: Number.isFinite(Number(s.windowOpacity))
       ? Math.min(100, Math.max(30, Math.round(Number(s.windowOpacity))))
       : 100,
+    edgeAutoHide: Boolean(s.edgeAutoHide),
   };
 }

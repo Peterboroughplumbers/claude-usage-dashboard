@@ -408,6 +408,7 @@ function fillSettings(s: Settings): void {
   (f.elements.namedItem('launchAtStartup') as HTMLInputElement).checked = s.launchAtStartup;
   (f.elements.namedItem('alwaysOnTop') as HTMLInputElement).checked = s.alwaysOnTop;
   (f.elements.namedItem('minimizeToTray') as HTMLInputElement).checked = s.minimizeToTray;
+  (f.elements.namedItem('edgeAutoHide') as HTMLInputElement).checked = s.edgeAutoHide;
   (f.elements.namedItem('showBrowserOnRefresh') as HTMLInputElement).checked = s.showBrowserOnRefresh;
   const op = f.elements.namedItem('windowOpacity') as HTMLInputElement;
   op.value = String(s.windowOpacity);
@@ -434,6 +435,7 @@ function readSettings(): Settings {
     launchAtStartup: c('launchAtStartup'),
     alwaysOnTop: c('alwaysOnTop'),
     minimizeToTray: c('minimizeToTray'),
+    edgeAutoHide: c('edgeAutoHide'),
     showBrowserOnRefresh: c('showBrowserOnRefresh'),
     windowOpacity: Number(v('windowOpacity')),
   };

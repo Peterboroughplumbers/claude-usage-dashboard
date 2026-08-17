@@ -16,6 +16,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let manager: AccountManager | null = null;
 let quitting = false;
+let edgeAutoHide = false;
 
 // Single instance: a second launch just focuses the existing widget.
 if (!app.requestSingleInstanceLock()) {
@@ -45,6 +46,7 @@ async function bootstrap(): Promise<void> {
   createWindow(store.settings);
   createTray();
   applyStartupSetting(store.settings.launchAtStartup);
+  applyEdgeAutoHide(store.settings.edgeAutoHide, true);
 
   manager.onChange((state) => {
     mainWindow?.webContents.send(IPC.stateChanged, state);
@@ -90,7 +92,7 @@ function createWindow(settings: Settings): void {
   });
   mainWindow.setMenuBarVisibility(false);
   void mainWindow.loadFile(join(__dirname, '../ui/renderer/index.html'));
-  const startHidden = process.argv.includes('--hidden') && settings.minimizeToTray;
+  const startHidden = (process.argv.includes('--hidden') && settings.minimizeToTray) || settings.edgeAutoHide;
   mainWindow.once('ready-to-show', () => {
     if (!startHidden) mainWindow?.show();
   });
@@ -164,6 +166,84 @@ function showWindow(): void {
   mainWindow.focus();
 }
 
+/* ------------------------- edge auto-hide (hover) -------------------------- */
+
+const EDGE_POLL_MS = 100;
+const EDGE_TRIGGER_PX = 2; // how close to the right screen edge the cursor must be
+const EDGE_LEAVE_MARGIN_PX = 24; // slack around the window before it counts as "left"
+const EDGE_HIDE_DELAY_MS = 700;
+let edgeTimer: NodeJS.Timeout | null = null;
+let edgeLeftSince: number | null = null;
+
+/** Docks the window flush against the right edge of the primary display (keeps its y). */
+function dockToRightEdge(): void {
+  if (!mainWindow) return;
+  const { workArea } = screen.getPrimaryDisplay();
+  const [w, h] = mainWindow.getSize();
+  const [, y] = mainWindow.getPosition();
+  const maxY = workArea.y + workArea.height - h;
+  mainWindow.setPosition(workArea.x + workArea.width - w, Math.max(workArea.y, Math.min(y, maxY)));
+}
+
+function revealFromEdge(): void {
+  if (!mainWindow || mainWindow.isVisible()) return;
+  dockToRightEdge();
+  // Do not steal focus from whatever the user is working in – just peek in.
+  mainWindow.showInactive();
+  mainWindow.moveTop();
+  edgeLeftSince = null;
+}
+
+function edgeTick(): void {
+  if (!mainWindow || !edgeAutoHide) return;
+  const cursor = screen.getCursorScreenPoint();
+  const { bounds } = screen.getPrimaryDisplay();
+  const atRightEdge =
+    cursor.x >= bounds.x + bounds.width - EDGE_TRIGGER_PX &&
+    cursor.y >= bounds.y &&
+    cursor.y < bounds.y + bounds.height;
+
+  if (!mainWindow.isVisible()) {
+    if (atRightEdge) revealFromEdge();
+    return;
+  }
+
+  const b = mainWindow.getBounds();
+  const inside =
+    cursor.x >= b.x - EDGE_LEAVE_MARGIN_PX &&
+    cursor.x <= b.x + b.width + EDGE_LEAVE_MARGIN_PX &&
+    cursor.y >= b.y - EDGE_LEAVE_MARGIN_PX &&
+    cursor.y <= b.y + b.height + EDGE_LEAVE_MARGIN_PX;
+  if (inside || atRightEdge) {
+    edgeLeftSince = null;
+    return;
+  }
+  edgeLeftSince ??= Date.now();
+  if (Date.now() - edgeLeftSince >= EDGE_HIDE_DELAY_MS) {
+    edgeLeftSince = null;
+    mainWindow.hide();
+  }
+}
+
+function applyEdgeAutoHide(enabled: boolean, initial = false): void {
+  edgeAutoHide = enabled;
+  if (edgeTimer) {
+    clearInterval(edgeTimer);
+    edgeTimer = null;
+  }
+  edgeLeftSince = null;
+  if (!mainWindow) return;
+  if (enabled) {
+    // The widget has to float above other windows to be usable as a hover-in panel.
+    mainWindow.setAlwaysOnTop(true, 'floating');
+    dockToRightEdge(); // it hides by itself once the cursor leaves it
+    edgeTimer = setInterval(edgeTick, EDGE_POLL_MS);
+  } else {
+    mainWindow.setAlwaysOnTop(manager?.getState().settings.alwaysOnTop ?? false, 'floating');
+    if (!initial && !mainWindow.isVisible()) showWindow();
+  }
+}
+
 function applyStartupSetting(enabled: boolean): void {
   if (isDev || !app.isPackaged) return; // avoid registering the dev electron binary
   try {
@@ -190,8 +270,9 @@ function registerIpc(m: AccountManager): void {
   ipcMain.handle(IPC.saveSettings, (_e, raw: unknown) => {
     const settings = sanitizeSettings(raw);
     m.applySettings(settings);
-    mainWindow?.setAlwaysOnTop(settings.alwaysOnTop, 'floating');
+    mainWindow?.setAlwaysOnTop(settings.alwaysOnTop || settings.edgeAutoHide, 'floating');
     applyStartupSetting(settings.launchAtStartup);
+    if (settings.edgeAutoHide !== edgeAutoHide) applyEdgeAutoHide(settings.edgeAutoHide);
   });
   ipcMain.on(IPC.minimize, () => {
     if (m.getState().settings.minimizeToTray) mainWindow?.hide();

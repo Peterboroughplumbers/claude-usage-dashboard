@@ -90,6 +90,8 @@ export interface Settings {
   showBrowserOnRefresh: boolean;
   /** Window background opacity in percent (30–100). Lower = more see-through. */
   windowOpacity: number;
+  /** Keep the widget hidden; reveal it when the mouse touches the right screen edge. */
+  edgeAutoHide: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -101,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   minimizeToTray: true,
   showBrowserOnRefresh: false,
   windowOpacity: 100,
+  edgeAutoHide: false,
 };
 
 export interface DashboardState {
