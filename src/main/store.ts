@@ -89,6 +89,7 @@ export class Store {
         windowOpen: false,
         terminal: null,
         terminalBusy: false,
+        autoLinkNote: null,
         lastAttemptAt: null,
         lastSuccessAt: p?.lastSuccessAt ?? null,
       };

@@ -148,6 +148,40 @@ export class AccountManager {
     }
   }
 
+  /** Id of the account whose login was started most recently (target for clipboard links). */
+  private lastLoginId: AccountId | null = null;
+
+  /** True if the text looks like a claude.ai login / magic link (what the login e-mail contains). */
+  static isLoginLink(text: string): boolean {
+    const t = text.trim();
+    if (t.length > 4000 || /\s/.test(t)) return false;
+    let url: URL;
+    try {
+      url = new URL(t);
+    } catch {
+      return false;
+    }
+    if (url.protocol !== 'https:' || !LOGIN_LINK_HOSTS.test(url.hostname)) return false;
+    return /(magic|login|signin|auth|verify|token|code)/i.test(url.pathname + url.search + url.hash);
+  }
+
+  /**
+   * Called by the clipboard watcher: opens a copied login link in the account whose login
+   * window is open (the most recently started one if several are). Returns true if handled.
+   */
+  async autoOpenLoginLink(text: string): Promise<boolean> {
+    const open = this.accounts.filter((a) => a.loginInProgress && this.openWindows.has(a.id));
+    if (open.length === 0) return false;
+    const target = open.find((a) => a.id === this.lastLoginId) ?? open[open.length - 1]!;
+    target.autoLinkNote = 'Login link found in clipboard — opening it here…';
+    this.emit();
+    const err = await this.loginNavigate(target.id, text);
+    target.autoLinkNote = err ? `Clipboard link: ${err}` : 'Login link from clipboard opened in this window ✓';
+    this.emit();
+    log.info(`Account ${target.id}: clipboard login link ${err ? 'failed' : 'opened'}`);
+    return true;
+  }
+
   /* --------------------------------- settings ------------------------------- */
 
   applySettings(settings: Settings): void {
@@ -184,6 +218,7 @@ export class AccountManager {
       errorDetail: 'Click "Login" to sign in to this account',
       hasProfile: false,
       loginInProgress: false,
+      autoLinkNote: null,
       windowOpen: false,
       terminal: null,
       terminalBusy: false,
@@ -351,6 +386,8 @@ export class AccountManager {
       log.info(`Login requested for account ${id} while refreshing — will open after the read`);
     }
     acc.loginInProgress = true;
+    acc.autoLinkNote = null;
+    this.lastLoginId = id;
     acc.error = null;
     acc.errorDetail = null;
     this.emit();
@@ -374,6 +411,7 @@ export class AccountManager {
       if (error !== 'browser_busy') this.setError(acc, error, detail);
     } finally {
       acc.loginInProgress = false;
+      acc.autoLinkNote = null;
       acc.hasProfile = acc.hasProfile || this.browsers.hasProfileData(id);
       this.emit();
       log.info(`Login finished for account ${id}`);

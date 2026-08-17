@@ -37,6 +37,7 @@ function account(id: 1 | 2 | 3, usage: UsageSnapshot | null, error: AccountState
     errorDetail: null,
     hasProfile: true,
     loginInProgress: false,
+    autoLinkNote: null,
     windowOpen: false,
     terminal: null,
     terminalBusy: false,

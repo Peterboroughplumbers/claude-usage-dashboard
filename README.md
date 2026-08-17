@@ -39,6 +39,10 @@ npm run build        # production build -> release/Claude Usage Dashboard-Setup-
      the e-mail opens in another browser, copy that link and paste it into the
      **"Paste it here"** box on the account card (or into the address bar of the
      app's browser window) — it is then opened inside the account's profile.
+     Even simpler: while a login window is open the app watches the clipboard —
+     just **copy** the login link from the e-mail and it is opened in that
+     account's window automatically (only `https://claude.ai` login links are
+     looked at; nothing else on the clipboard is read or stored).
      Typing the e-mail code directly into the app's window also works.
    - Google sign-in may refuse a fresh automated profile; the e-mail login is the
      most reliable option.

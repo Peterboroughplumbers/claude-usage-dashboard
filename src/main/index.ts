@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { IPC, type AccountId, type Settings } from '../shared/types';
@@ -51,6 +51,7 @@ async function bootstrap(): Promise<void> {
   manager.onChange((state) => {
     mainWindow?.webContents.send(IPC.stateChanged, state);
     updateTrayTooltip();
+    watchClipboard(state.accounts.some((a) => a.loginInProgress));
   });
   manager.startTimer();
   // Initial refresh shortly after start (only accounts that have a profile launch a browser).
@@ -164,6 +165,48 @@ function showWindow(): void {
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   mainWindow.focus();
+}
+
+/* --------------------- clipboard login-link auto-open ---------------------- */
+
+const CLIP_POLL_MS = 500;
+let clipTimer: NodeJS.Timeout | null = null;
+let clipLast = '';
+let clipBusy = false;
+
+/**
+ * While a login window is open, watch the clipboard: when the user copies the login
+ * link from the e-mail, open it inside that account's browser profile automatically.
+ * Only claude.ai login links are looked at; other clipboard content is ignored.
+ */
+function watchClipboard(active: boolean): void {
+  if (!active) {
+    if (clipTimer) clearInterval(clipTimer);
+    clipTimer = null;
+    return;
+  }
+  if (clipTimer) return;
+  clipLast = safeClipboardText(); // ignore whatever was copied before the login started
+  clipTimer = setInterval(() => {
+    if (clipBusy || !manager) return;
+    const text = safeClipboardText();
+    if (text === clipLast) return;
+    clipLast = text;
+    if (!AccountManager.isLoginLink(text)) return;
+    clipBusy = true;
+    void manager
+      .autoOpenLoginLink(text)
+      .catch((err) => log.warn('Clipboard login link failed', err))
+      .finally(() => (clipBusy = false));
+  }, CLIP_POLL_MS);
+}
+
+function safeClipboardText(): string {
+  try {
+    return clipboard.readText() ?? '';
+  } catch {
+    return '';
+  }
 }
 
 /* ------------------------------ auto height ------------------------------- */

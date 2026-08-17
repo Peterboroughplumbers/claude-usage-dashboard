@@ -73,6 +73,8 @@ export interface AccountState {
   terminal: TerminalState | null;
   /** True while a terminal setup (CLI login) or launch is running. */
   terminalBusy: boolean;
+  /** Short note about a login link picked up from the clipboard (shown under the login box). */
+  autoLinkNote: string | null;
   lastAttemptAt: number | null;
   lastSuccessAt: number | null;
 }

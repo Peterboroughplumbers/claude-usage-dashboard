@@ -1001,6 +1001,15 @@ main::-webkit-scrollbar-thumb {
   border-radius: 10px;
 }
 
+.link-auto {
+  font-size: 11px;
+  color: var(--cyan);
+  margin: 2px 0 4px;
+}
+.link-auto.ok {
+  color: var(--available);
+}
+
 .link-hint {
   color: var(--muted);
   font-size: 10.5px;

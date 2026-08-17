@@ -254,7 +254,7 @@ function renderCard(a: AccountState, recommendedId: number | null, now: number):
     card.append(el('div', 'card-msg', 'Not logged in yet.'));
   }
 
-  if (a.loginInProgress) card.append(loginLinkBox(a.id));
+  if (a.loginInProgress) card.append(loginLinkBox(a.id, a.autoLinkNote));
 
   const actions = el('div', 'card-actions');
   const reading = a.readState === 'refreshing' && !a.usage; // only disable while there is nothing to show
@@ -313,11 +313,12 @@ async function openTerminal(id: AccountState['id']): Promise<void> {
  * If the e-mail login link opened in another browser (i.e. the wrong profile),
  * the user can paste it here and it is opened inside the account's own login window.
  */
-function loginLinkBox(id: AccountState['id']): HTMLElement {
+function loginLinkBox(id: AccountState['id'], autoNote: string | null): HTMLElement {
   const box = el('div', 'link-box');
   box.append(
-    el('div', 'link-hint', 'Login link opened in another browser? Paste it here to open it in this account\u2019s window:'),
+    el('div', 'link-hint', 'Tip: just copy the login link from the e-mail — it opens here automatically. Or paste it below:'),
   );
+  if (autoNote) box.append(el('div', autoNote.includes('opened') ? 'link-auto ok' : 'link-auto', autoNote));
   const row = el('div', 'link-row');
   const input = el('input', 'link-input');
   input.type = 'url';
