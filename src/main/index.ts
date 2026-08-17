@@ -65,7 +65,7 @@ function createWindow(settings: Settings): void {
     width: WINDOW_WIDTH,
     height: WINDOW_HEIGHT,
     minWidth: 300,
-    minHeight: 420,
+    minHeight: 240,
     maxWidth: 520,
     x: workArea.x + workArea.width - WINDOW_WIDTH - 16,
     y: workArea.y + 16,
@@ -164,6 +164,23 @@ function showWindow(): void {
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   mainWindow.focus();
+}
+
+/* ------------------------------ auto height ------------------------------- */
+
+/** Resizes the window so all content fits (no scrolling) without leaving the work area. */
+function fitWindowHeight(contentPx: number): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const { workArea } = screen.getDisplayMatching(mainWindow.getBounds());
+  const [w, h] = mainWindow.getSize();
+  const [x, y] = mainWindow.getPosition();
+  const margin = 8;
+  const target = Math.max(240, Math.min(Math.round(contentPx), workArea.height - margin * 2));
+  if (Math.abs(target - h) < 2) return;
+  // Keep the top where it is; if the bottom would leave the screen, slide the window up.
+  const maxY = workArea.y + workArea.height - margin - target;
+  const newY = Math.max(workArea.y + margin, Math.min(y, maxY));
+  mainWindow.setBounds({ x, y: newY, width: w, height: target }, false);
 }
 
 /* ------------------------- edge auto-hide (hover) -------------------------- */
@@ -279,6 +296,9 @@ function registerIpc(m: AccountManager): void {
     else mainWindow?.minimize();
   });
   ipcMain.on(IPC.close, () => mainWindow?.close());
+  ipcMain.on(IPC.fitHeight, (_e, px: unknown) => {
+    if (typeof px === 'number' && Number.isFinite(px)) fitWindowHeight(px);
+  });
 }
 
 app.on('window-all-closed', () => {

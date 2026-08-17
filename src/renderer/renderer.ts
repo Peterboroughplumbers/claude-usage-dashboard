@@ -439,6 +439,7 @@ function render(): void {
   ($('btn-add-account') as HTMLButtonElement).disabled = state.accounts.length >= 10;
   applyLook(state.settings);
   firstPaint = false;
+  scheduleFit();
 }
 
 /* ------------------------------- settings -------------------------------- */
@@ -523,6 +524,39 @@ function toggleSettings(open: boolean): void {
   settingsOpen = open;
   $('settings').hidden = !open;
   if (open && state) fillSettings(state.settings);
+  scheduleFit();
+}
+
+/* ------------------------------ auto height ------------------------------- */
+
+let fitRaf = 0;
+/** Ask the main process to size the window to the content (titlebar + cards + footer). */
+function scheduleFit(): void {
+  if (fitRaf) cancelAnimationFrame(fitRaf);
+  fitRaf = requestAnimationFrame(() => {
+    fitRaf = 0;
+    const header = document.querySelector<HTMLElement>('.titlebar');
+    const footer = document.querySelector<HTMLElement>('.footer');
+    const main = $('main');
+    // Measure the real content (not the flex-stretched container) so the window can shrink too.
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const child of Array.from(main.children) as HTMLElement[]) {
+      if (child.hidden || child.offsetParent === null) continue;
+      // offsetTop/Height ignore the entrance transforms, unlike getBoundingClientRect.
+      top = Math.min(top, child.offsetTop);
+      bottom = Math.max(bottom, child.offsetTop + child.offsetHeight);
+    }
+    const cs = getComputedStyle(main);
+    const content = bottom > top ? bottom - top : 0;
+    const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    let needed = (header?.offsetHeight ?? 0) + pad + content + (footer?.offsetHeight ?? 0) + 2;
+    if (settingsOpen) {
+      const s = $('settings');
+      needed = Math.max(needed, (header?.offsetHeight ?? 0) + s.scrollHeight + 4);
+    }
+    api.fitHeight(needed);
+  });
 }
 
 /* --------------------------------- init ---------------------------------- */
@@ -542,6 +576,7 @@ async function init(): Promise<void> {
   });
   $('btn-settings-close').addEventListener('click', () => toggleSettings(false));
   $('btn-add-account').addEventListener('click', () => void api.addAccount());
+  window.addEventListener('resize', scheduleFit);
   $('btn-minimize').addEventListener('click', () => api.minimize());
   $('btn-close').addEventListener('click', () => api.close());
   form().addEventListener('submit', (e) => {

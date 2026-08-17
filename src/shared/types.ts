@@ -134,6 +134,7 @@ export const IPC = {
   saveSettings: 'dashboard:save-settings',
   minimize: 'window:minimize',
   close: 'window:close',
+  fitHeight: 'window:fit-height',
 } as const;
 
 /** API exposed to the renderer through the preload script. */
@@ -164,5 +165,7 @@ export interface DashboardApi {
   saveSettings(settings: Settings): Promise<void>;
   minimize(): void;
   close(): void;
+  /** Ask the window to resize its height to fit `px` of content (clamped to the screen). */
+  fitHeight(px: number): void;
   onStateChanged(cb: (state: DashboardState) => void): () => void;
 }

@@ -24,6 +24,7 @@ const IPC = {
   saveSettings: 'dashboard:save-settings',
   minimize: 'window:minimize',
   close: 'window:close',
+  fitHeight: 'window:fit-height',
 } as const satisfies typeof SharedIPC;
 
 const api: DashboardApi = {
@@ -40,6 +41,7 @@ const api: DashboardApi = {
   saveSettings: (settings: Settings) => ipcRenderer.invoke(IPC.saveSettings, settings) as Promise<void>,
   minimize: () => ipcRenderer.send(IPC.minimize),
   close: () => ipcRenderer.send(IPC.close),
+  fitHeight: (px: number) => ipcRenderer.send(IPC.fitHeight, px),
   onStateChanged: (cb) => {
     const handler = (_e: Electron.IpcRendererEvent, state: DashboardState): void => cb(state);
     ipcRenderer.on(IPC.stateChanged, handler);
