@@ -106,6 +106,21 @@ request fresh on the next account instead of resuming.
   limit is hit"** (or set `CLAUDE_AUTO_SWITCH=0` for one terminal). With it off,
   or for `claude` sub-commands like `auth` / `mcp` / `--continue` / `--resume`,
   the launcher is a plain pass-through.
+- **Which account it moves to** — Settings → Claude Code → *"When switching,
+  prefer…"*:
+  - **the account with the most usage left** (default) — safest, least likely to
+    run out again;
+  - **the account that resets soonest** — uses up capacity that is about to reset
+    anyway, keeping fresher accounts for later (your "don't waste soon-to-reset
+    capacity" case).
+- **Auto-switch for plain `claude` everywhere** — Settings → Claude Code →
+  *"Also auto-switch for plain `claude` everywhere"*. This adds a small `claude`
+  function to your PowerShell profile (a "shim") so that typing `claude` in **any**
+  terminal starts on the recommended account and auto-switches on limits — not just
+  terminals opened from the app. Note: with it on, plain `claude` uses these
+  dashboard accounts (not your separate `~/.claude` login). Open a new terminal
+  after toggling. It writes a clearly-marked block you can delete by hand, or turn
+  the setting back off.
 - How it works internally: the dashboard keeps `~/.claude-accounts/accounts.json`
   in sync with what it shows (percentages, recommendation, Claude Code sign-in
   state per account) and the wrapper reads it to pick the target. **No credentials
@@ -130,6 +145,7 @@ src/main/usage/extractor.ts    ALL claude.ai selectors/parsing (update here if t
 src/main/store.ts              settings + last snapshots (JSON in userData)
 src/main/autoswitch.ts         accounts.json writer + wrapper installer (terminal auto-switch)
 src/main/scripts/claude-auto.ps1  Windows wrapper: detects the limit and moves the session on
+src/main/scripts/claude-shim.ps1  installs/removes the global `claude` PowerShell shim
 src/main/logger.ts             redacting file logger
 src/preload/index.ts           contextBridge API
 src/renderer/                  widget UI (HTML/CSS/TS, no framework)

@@ -11,4 +11,5 @@ for (const f of ['index.html', 'styles.css']) copyFileSync(join(src, f), join(de
 const scriptsDest = join(process.cwd(), 'dist', 'main', 'scripts');
 mkdirSync(scriptsDest, { recursive: true });
 copyFileSync(join(process.cwd(), 'src', 'main', 'scripts', 'claude-auto.ps1'), join(scriptsDest, 'claude-auto.ps1'));
+copyFileSync(join(process.cwd(), 'src', 'main', 'scripts', 'claude-shim.ps1'), join(scriptsDest, 'claude-shim.ps1'));
 console.log('Static assets copied to', dest);

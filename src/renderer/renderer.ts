@@ -482,6 +482,9 @@ function fillSettings(s: Settings): void {
   (f.elements.namedItem('edgeAutoHide') as HTMLInputElement).checked = s.edgeAutoHide;
   (f.elements.namedItem('showBrowserOnRefresh') as HTMLInputElement).checked = s.showBrowserOnRefresh;
   (f.elements.namedItem('terminalAutoSwitch') as HTMLInputElement).checked = s.terminalAutoSwitch;
+  (f.elements.namedItem('terminalSwitchStrategy') as HTMLSelectElement).value = s.terminalSwitchStrategy;
+  const shimBox = f.elements.namedItem('globalShim') as HTMLInputElement | null;
+  if (shimBox) shimBox.checked = Boolean(state?.globalShimInstalled);
   const op = f.elements.namedItem('windowOpacity') as HTMLInputElement;
   op.value = String(s.windowOpacity);
   $('opacity-value').textContent = `${s.windowOpacity}%`;
@@ -491,6 +494,25 @@ function fillSettings(s: Settings): void {
       : 'No compatible browser found (install Edge or Chrome).';
     $('about-version').textContent = `Claude Usage Dashboard v${state.appVersion}`;
   }
+}
+
+async function applySettingsAndShim(): Promise<void> {
+  const f = form();
+  const shimBox = f.elements.namedItem('globalShim') as HTMLInputElement | null;
+  const wantShim = Boolean(shimBox?.checked);
+  const note = document.getElementById('shim-note');
+  await api.saveSettings(readSettings());
+  if (shimBox && wantShim !== Boolean(state?.globalShimInstalled)) {
+    if (note) note.textContent = wantShim ? 'Setting up…' : 'Removing…';
+    const err = await api.setGlobalShim(wantShim);
+    if (err) {
+      if (note) note.textContent = `Could not update: ${err}`;
+      shimBox.checked = Boolean(state?.globalShimInstalled);
+      return; // keep settings open so the message is visible
+    }
+    if (note) note.textContent = wantShim ? 'Done — open a new terminal.' : 'Removed — open a new terminal.';
+  }
+  toggleSettings(false);
 }
 
 function readSettings(): Settings {
@@ -510,6 +532,7 @@ function readSettings(): Settings {
     edgeAutoHide: c('edgeAutoHide'),
     showBrowserOnRefresh: c('showBrowserOnRefresh'),
     terminalAutoSwitch: c('terminalAutoSwitch'),
+    terminalSwitchStrategy: (v('terminalSwitchStrategy') === 'soonest-reset' ? 'soonest-reset' : 'most-capacity'),
     windowOpacity: Number(v('windowOpacity')),
   };
 }
@@ -584,7 +607,7 @@ async function init(): Promise<void> {
   $('btn-close').addEventListener('click', () => api.close());
   form().addEventListener('submit', (e) => {
     e.preventDefault();
-    void api.saveSettings(readSettings()).then(() => toggleSettings(false));
+    void applySettingsAndShim();
   });
 
   api.onStateChanged((s) => {

@@ -1,6 +1,6 @@
 import { shell } from 'electron';
 import type { BrowserContext, Page } from 'playwright-core';
-import { ensureAutoSwitchScript, writeAccountsFile } from './autoswitch';
+import { ensureAutoSwitchScript, isGlobalShimInstalled, setGlobalShim, writeAccountsFile } from './autoswitch';
 import {
   MAX_ACCOUNTS,
   type AccountId,
@@ -76,6 +76,7 @@ export class AccountManager {
       refreshing: this.refreshingAll || this.accounts.some((a) => a.readState === 'refreshing'),
       browserName: this.browsers.browserName,
       claudeCliFound: findClaude() !== null,
+      globalShimInstalled: isGlobalShimInstalled(),
       appVersion: this.appVersion,
     };
   }
@@ -107,7 +108,7 @@ export class AccountManager {
     if (this.accountsFileTimer) return;
     this.accountsFileTimer = setTimeout(() => {
       this.accountsFileTimer = null;
-      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch);
+      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch, this.store.settings.terminalSwitchStrategy);
     }, 500);
   }
 
@@ -584,7 +585,7 @@ export class AccountManager {
           log.warn('Auto-switch wrapper unavailable, opening a plain terminal', err);
         }
       }
-      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch);
+      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch, this.store.settings.terminalSwitchStrategy);
       const launcher = ensureLauncher(id, this.helperDir, acc.name, wrapper);
       if (this.pathBinDir) {
         try {
@@ -698,12 +699,19 @@ export class AccountManager {
     return m ? m[1] : null;
   }
 
+  /** Installs/removes the global `claude` shim. Returns an error message or null; refreshes state. */
+  async setGlobalShim(enabled: boolean): Promise<string | null> {
+    const err = await setGlobalShim(this.helperDir, enabled);
+    this.emit();
+    return err;
+  }
+
   async shutdown(): Promise<void> {
     this.stopTimer();
     if (this.accountsFileTimer) {
       clearTimeout(this.accountsFileTimer);
       this.accountsFileTimer = null;
-      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch);
+      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch, this.store.settings.terminalSwitchStrategy);
     }
     await this.browsers.closeAll();
   }

@@ -12,7 +12,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { effectivePercent, recommendAccount } from '../shared/status';
-import type { AccountState } from '../shared/types';
+import type { AccountState, TerminalSwitchStrategy } from '../shared/types';
 import { log } from './logger';
 import { accountsRoot, configDir, findClaude } from './terminal';
 
@@ -44,6 +44,8 @@ export interface AccountsFile {
   updatedAt: number;
   /** Master switch from the dashboard settings; the wrapper is a plain launcher when false. */
   autoSwitch: boolean;
+  /** Which account the wrapper should prefer when switching. */
+  switchStrategy: TerminalSwitchStrategy;
   /** Full path of the `claude` CLI as found by the dashboard (wrapper falls back to PATH). */
   claudePath: string | null;
   /** Account the dashboard currently recommends (most capacity left), or null. */
@@ -54,13 +56,20 @@ export interface AccountsFile {
 /** Pure: builds the file contents from dashboard state. */
 export function buildAccountsFile(
   accounts: AccountState[],
-  opts: { autoSwitch: boolean; claudePath: string | null; now: number; configDirFor?: (id: number) => string },
+  opts: {
+    autoSwitch: boolean;
+    switchStrategy?: TerminalSwitchStrategy;
+    claudePath: string | null;
+    now: number;
+    configDirFor?: (id: number) => string;
+  },
 ): AccountsFile {
   const dirFor = opts.configDirFor ?? configDir;
   return {
     version: 1,
     updatedAt: opts.now,
     autoSwitch: opts.autoSwitch,
+    switchStrategy: opts.switchStrategy === 'soonest-reset' ? 'soonest-reset' : 'most-capacity',
     claudePath: opts.claudePath,
     recommendedId: recommendAccount(accounts)?.id ?? null,
     accounts: accounts.map((a) => ({
@@ -85,14 +94,18 @@ export function accountsFilePath(): string {
 }
 
 /** Writes `~/.claude-accounts/accounts.json` atomically. Errors are logged, never thrown. */
-export function writeAccountsFile(accounts: AccountState[], autoSwitch: boolean): void {
+export function writeAccountsFile(
+  accounts: AccountState[],
+  autoSwitch: boolean,
+  switchStrategy: TerminalSwitchStrategy = 'most-capacity',
+): void {
   const claudePath = findClaude();
   // Pointless without Claude Code — don't litter the home directory.
   if (!claudePath && !existsSync(accountsRoot())) return;
   const file = accountsFilePath();
   try {
     mkdirSync(accountsRoot(), { recursive: true });
-    const data = buildAccountsFile(accounts, { autoSwitch, claudePath, now: Date.now() });
+    const data = buildAccountsFile(accounts, { autoSwitch, switchStrategy, claudePath, now: Date.now() });
     const tmp = `${file}.tmp`;
     writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
     renameSync(tmp, file);
@@ -121,4 +134,64 @@ export function ensureAutoSwitchScript(helperDir: string): string {
     if (!existsSync(dest)) copyFileSync(src, dest); // let the original error surface if this fails too
   }
   return dest;
+}
+
+/* ------------------------------ global shim ------------------------------- */
+
+import { execFile } from 'node:child_process';
+import { homedir } from 'node:os';
+
+export const SHIM_SCRIPT = 'claude-shim.ps1';
+const SHIM_BEGIN_MARK = '# >>> Claude Usage Dashboard auto-switch shim >>>';
+
+/** PowerShell "profile.ps1" (all-hosts, current user) — where the shim block lives. */
+function powershellProfilePath(): string {
+  // Matches Get-ProfilePaths in claude-shim.ps1 (WindowsPowerShell all-hosts profile).
+  return join(homedir(), 'Documents', 'WindowsPowerShell', 'profile.ps1');
+}
+
+/** True if the `claude` shim block is present in the PowerShell profile. */
+export function isGlobalShimInstalled(): boolean {
+  if (process.platform !== 'win32') return false;
+  try {
+    const p = powershellProfilePath();
+    return existsSync(p) && readFileSync(p, 'utf8').includes(SHIM_BEGIN_MARK);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Installs or removes the global `claude` shim by running claude-shim.ps1. The wrapper is
+ * installed alongside first so the shim has something to call. Resolves to an error message or null.
+ */
+export function setGlobalShim(helperDir: string, enabled: boolean): Promise<string | null> {
+  if (process.platform !== 'win32') return Promise.resolve('The global shim is only available on Windows.');
+  ensureAutoSwitchScript(helperDir);
+  // Install the shim script next to the wrapper, then run it.
+  mkdirSync(helperDir, { recursive: true });
+  const shimDest = join(helperDir, SHIM_SCRIPT);
+  try {
+    const src = join(__dirname, 'scripts', SHIM_SCRIPT);
+    const next = readFileSync(src);
+    if (!existsSync(shimDest) || !readFileSync(shimDest).equals(next)) writeFileSync(shimDest, next);
+  } catch (err) {
+    return Promise.resolve(`Could not find the shim installer: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return new Promise((resolve) => {
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', shimDest, '-Action', enabled ? 'install' : 'uninstall'],
+      { windowsHide: true, timeout: 30_000 },
+      (err, _stdout, stderr) => {
+        if (err) {
+          log.warn(`Global shim ${enabled ? 'install' : 'uninstall'} failed`, stderr || err);
+          resolve(stderr?.trim() || err.message);
+        } else {
+          log.info(`Global shim ${enabled ? 'installed' : 'removed'}`);
+          resolve(null);
+        }
+      },
+    );
+  });
 }
