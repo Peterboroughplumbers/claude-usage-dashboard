@@ -81,6 +81,38 @@ three accounts can be used side by side without logging in/out.
 - The per-account config dir is seeded with your global `~/.claude/settings.json`
   once; credentials are never read or copied by the app.
 
+### Auto-switch when the usage limit is hit (Windows)
+
+Terminals opened here don't stop when an account runs out. On Windows the launcher
+runs Claude Code through a small wrapper (`claude-auto.ps1`). When the current
+account hits its **session or weekly usage limit**, the wrapper:
+
+1. notices the limit (Claude Code writes a `rate_limit` error into the session
+   transcript, and the interactive limit dialog is also read from the screen),
+2. stops the CLI and **moves the running session to another signed-in account**
+   that still has capacity, then
+3. resumes the *same conversation* there with `claude --resume <id>` — no login,
+   no re-typing. You just see a one-line "continuing as <account>…" banner and the
+   work goes on.
+
+The target account is chosen from the same numbers shown on the dashboard: the
+**Recommended** account first, otherwise the signed-in account with the lowest
+usage. Accounts that are themselves out of capacity (or not signed in to Claude
+Code) are skipped; if none is left, the session simply stays where it is. If the
+limit is hit on the very first message (nothing saved yet) the wrapper starts the
+request fresh on the next account instead of resuming.
+
+- Turn it off in **Settings → Claude Code → "Auto-switch account when the usage
+  limit is hit"** (or set `CLAUDE_AUTO_SWITCH=0` for one terminal). With it off,
+  or for `claude` sub-commands like `auth` / `mcp` / `--continue` / `--resume`,
+  the launcher is a plain pass-through.
+- How it works internally: the dashboard keeps `~/.claude-accounts/accounts.json`
+  in sync with what it shows (percentages, recommendation, Claude Code sign-in
+  state per account) and the wrapper reads it to pick the target. **No credentials
+  or tokens are ever written there** — only your conversation transcript is copied
+  between the per-account config dirs, which is what `--resume` needs.
+- A short log of any switches is kept at `~/.claude-accounts/auto-switch.log`.
+
 ## Settings
 
 Rename accounts · refresh interval · launch at Windows startup · **auto-hide at the right screen edge** (widget stays hidden and slides in when the mouse touches the right edge; leaves again ~0.7 s after the mouse moves away; the tray icon always shows it) · always on
@@ -96,6 +128,8 @@ src/main/accounts.ts           refresh/login orchestration, auto-refresh timer
 src/main/browser.ts            per-account persistent Playwright contexts, browser detection
 src/main/usage/extractor.ts    ALL claude.ai selectors/parsing (update here if the UI changes)
 src/main/store.ts              settings + last snapshots (JSON in userData)
+src/main/autoswitch.ts         accounts.json writer + wrapper installer (terminal auto-switch)
+src/main/scripts/claude-auto.ps1  Windows wrapper: detects the limit and moves the session on
 src/main/logger.ts             redacting file logger
 src/preload/index.ts           contextBridge API
 src/renderer/                  widget UI (HTML/CSS/TS, no framework)

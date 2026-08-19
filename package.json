@@ -1,7 +1,7 @@
 {
   "name": "claude-usage-dashboard",
   "productName": "Claude Usage Dashboard",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Compact Windows desktop widget showing usage of multiple Claude accounts",
   "main": "dist/main/index.js",
   "author": "Pickigo",

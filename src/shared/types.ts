@@ -94,6 +94,11 @@ export interface Settings {
   windowOpacity: number;
   /** Keep the widget hidden; reveal it when the mouse touches the right screen edge. */
   edgeAutoHide: boolean;
+  /**
+   * Claude Code terminals opened from the dashboard move the running session to another
+   * signed-in account when the current one hits its usage limit (no re-login).
+   */
+  terminalAutoSwitch: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +111,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showBrowserOnRefresh: false,
   windowOpacity: 100,
   edgeAutoHide: false,
+  terminalAutoSwitch: true,
 };
 
 export interface DashboardState {

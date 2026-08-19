@@ -481,6 +481,7 @@ function fillSettings(s: Settings): void {
   (f.elements.namedItem('minimizeToTray') as HTMLInputElement).checked = s.minimizeToTray;
   (f.elements.namedItem('edgeAutoHide') as HTMLInputElement).checked = s.edgeAutoHide;
   (f.elements.namedItem('showBrowserOnRefresh') as HTMLInputElement).checked = s.showBrowserOnRefresh;
+  (f.elements.namedItem('terminalAutoSwitch') as HTMLInputElement).checked = s.terminalAutoSwitch;
   const op = f.elements.namedItem('windowOpacity') as HTMLInputElement;
   op.value = String(s.windowOpacity);
   $('opacity-value').textContent = `${s.windowOpacity}%`;
@@ -508,6 +509,7 @@ function readSettings(): Settings {
     minimizeToTray: c('minimizeToTray'),
     edgeAutoHide: c('edgeAutoHide'),
     showBrowserOnRefresh: c('showBrowserOnRefresh'),
+    terminalAutoSwitch: c('terminalAutoSwitch'),
     windowOpacity: Number(v('windowOpacity')),
   };
 }
