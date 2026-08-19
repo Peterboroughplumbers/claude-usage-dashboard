@@ -142,5 +142,6 @@ export function sanitizeSettings(input: unknown): Settings {
       : 100,
     edgeAutoHide: Boolean(s.edgeAutoHide),
     terminalAutoSwitch: s.terminalAutoSwitch === undefined ? true : Boolean(s.terminalAutoSwitch),
+    terminalSwitchStrategy: s.terminalSwitchStrategy === 'soonest-reset' ? 'soonest-reset' : 'most-capacity',
   };
 }

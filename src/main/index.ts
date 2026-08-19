@@ -325,6 +325,7 @@ function registerIpc(m: AccountManager): void {
     isAccountId(id) && typeof url === 'string' ? m.loginNavigate(id, url) : 'Invalid request',
   );
   ipcMain.handle(IPC.terminalOpen, (_e, id: unknown) => (isAccountId(id) ? m.openTerminal(id) : 'Invalid request'));
+  ipcMain.handle(IPC.setGlobalShim, (_e, enabled: unknown) => m.setGlobalShim(Boolean(enabled)));
   ipcMain.handle(IPC.addAccount, () => m.addAccount());
   ipcMain.handle(IPC.removeAccount, (_e, id: unknown) => (isAccountId(id) ? m.removeAccount(id) : undefined));
   ipcMain.handle(IPC.saveSettings, (_e, raw: unknown) => {

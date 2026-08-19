@@ -71,7 +71,16 @@
         <fieldset>
           <legend>Claude Code (terminal)</legend>
           <label class="check"><input type="checkbox" name="terminalAutoSwitch" /> Auto-switch account when the usage limit is hit</label>
-          <small>Terminals opened here keep working: when the account runs out, the session is moved to another signed-in account and resumed automatically.</small>
+          <small>Terminals opened here keep working: when an account runs out, your session moves to another signed-in account and continues automatically — no new window, no re-login.</small>
+          <label>When switching, prefer
+            <span class="inline"><select name="terminalSwitchStrategy">
+              <option value="most-capacity">the account with the most usage left</option>
+              <option value="soonest-reset">the account that resets soonest</option>
+            </select></span>
+          </label>
+          <small><b>Most usage left</b> is safest (least likely to run out again). <b>Resets soonest</b> uses up capacity that is about to reset anyway, keeping fresher accounts for later.</small>
+          <label class="check"><input type="checkbox" name="globalShim" /> Also auto-switch for plain <code>claude</code> everywhere (not just this app)</label>
+          <small>Adds a small helper to your PowerShell so typing <code>claude</code> in <i>any</i> terminal starts on the recommended account and auto-switches on limits. Note: plain <code>claude</code> then uses these dashboard accounts. Open a new terminal after changing. <span id="shim-note"></span></small>
         </fieldset>
         <fieldset>
           <legend>Window</legend>

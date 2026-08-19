@@ -7,6 +7,14 @@ export const MAX_ACCOUNTS = 10;
 
 export type UsageStatus = 'available' | 'medium' | 'high' | 'near_limit';
 
+/**
+ * How the terminal auto-switch picks the next account when the current one is out:
+ * - 'most-capacity': the account with the most usage left (safest — least likely to run out again).
+ * - 'soonest-reset': the account whose limit resets soonest, so capacity that is about to reset
+ *   anyway gets used on real work first and fresher accounts are kept for later.
+ */
+export type TerminalSwitchStrategy = 'most-capacity' | 'soonest-reset';
+
 /** Result kinds when reading usage fails. Never fabricated values. */
 export type UsageErrorKind =
   | 'login_required'
@@ -99,6 +107,8 @@ export interface Settings {
    * signed-in account when the current one hits its usage limit (no re-login).
    */
   terminalAutoSwitch: boolean;
+  /** Which account the auto-switch prefers as the target. */
+  terminalSwitchStrategy: TerminalSwitchStrategy;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -112,6 +122,7 @@ export const DEFAULT_SETTINGS: Settings = {
   windowOpacity: 100,
   edgeAutoHide: false,
   terminalAutoSwitch: true,
+  terminalSwitchStrategy: 'most-capacity',
 };
 
 export interface DashboardState {
@@ -123,6 +134,8 @@ export interface DashboardState {
   browserName: string | null;
   /** Whether the `claude` CLI (Claude Code) was found on this machine. */
   claudeCliFound: boolean;
+  /** Whether the global `claude` auto-switch shim is installed in the PowerShell profile (Windows). */
+  globalShimInstalled: boolean;
   appVersion: string;
 }
 
@@ -137,6 +150,7 @@ export const IPC = {
   focusWindow: 'dashboard:focus-window',
   loginNavigate: 'dashboard:login-navigate',
   terminalOpen: 'dashboard:terminal-open',
+  setGlobalShim: 'dashboard:set-global-shim',
   addAccount: 'dashboard:add-account',
   removeAccount: 'dashboard:remove-account',
   saveSettings: 'dashboard:save-settings',
@@ -166,6 +180,8 @@ export interface DashboardApi {
    * Resolves to an error message, or null on success.
    */
   terminalOpen(id: AccountId): Promise<string | null>;
+  /** Installs/removes the global `claude` PowerShell shim. Resolves to an error message or null. */
+  setGlobalShim(enabled: boolean): Promise<string | null>;
   /** Adds a new empty account card. Resolves to its id, or null when the limit is reached. */
   addAccount(): Promise<AccountId | null>;
   /** Removes an account and deletes its local browser profile / saved data. */

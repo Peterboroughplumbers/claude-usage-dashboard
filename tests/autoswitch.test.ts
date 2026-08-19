@@ -100,3 +100,17 @@ describe('buildAccountsFile', () => {
     expect(f.claudePath).toBeNull();
   });
 });
+
+describe('buildAccountsFile switchStrategy', () => {
+  const a = account(1, snap({ sessionPercent: 10 }));
+  it("defaults to 'most-capacity'", () => {
+    expect(buildAccountsFile([a], opts).switchStrategy).toBe('most-capacity');
+  });
+  it('passes through soonest-reset', () => {
+    expect(buildAccountsFile([a], { ...opts, switchStrategy: 'soonest-reset' }).switchStrategy).toBe('soonest-reset');
+  });
+  it('sanitizes unknown values to most-capacity', () => {
+    // @ts-expect-error deliberately wrong
+    expect(buildAccountsFile([a], { ...opts, switchStrategy: 'bogus' }).switchStrategy).toBe('most-capacity');
+  });
+})

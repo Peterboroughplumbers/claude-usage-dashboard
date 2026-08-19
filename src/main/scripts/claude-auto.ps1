@@ -55,7 +55,14 @@ function ConvertFrom-CmdLine([string]$line) {
   if ($hasToken) { $out.Add($cur.ToString()) }
   return $out.ToArray()
 }
-[string[]]$ClaudeArgs = @(ConvertFrom-CmdLine $env:CLAUDE_AUTO_ARGS)
+# Args arrive either as a JSON array (CLAUDE_AUTO_ARGS_JSON, used by the PowerShell `claude`
+# shim — lossless, no quoting) or as a raw command line (CLAUDE_AUTO_ARGS, used by the .cmd launcher).
+[string[]]$ClaudeArgs = @()
+if ($env:CLAUDE_AUTO_ARGS_JSON) {
+  try { $ClaudeArgs = @([string[]](ConvertFrom-Json $env:CLAUDE_AUTO_ARGS_JSON)) } catch { $ClaudeArgs = @() }
+} else {
+  $ClaudeArgs = @(ConvertFrom-CmdLine $env:CLAUDE_AUTO_ARGS)
+}
 if ($null -eq $ClaudeArgs) { $ClaudeArgs = @() }
 $Root = Join-Path $env:USERPROFILE '.claude-accounts'
 if ($env:CLAUDE_AUTO_ROOT) { $Root = $env:CLAUDE_AUTO_ROOT }  # test hook
@@ -212,6 +219,11 @@ function Select-NextAccount($state, [int]$current, $failed) {
   }
   $stateAt = $null
   if ($state -and $state.updatedAt) { $stateAt = [DateTimeOffset]::FromUnixTimeMilliseconds([int64]$state.updatedAt).LocalDateTime }
+  # 'most-capacity' (default) = pick the account with the most usage left (safest).
+  # 'soonest-reset' = pick the account whose limit resets soonest, so capacity that is about to
+  #   reset anyway gets used first and fresher accounts are kept for later.
+  $strategy = 'most-capacity'
+  if ($state -and $state.PSObject.Properties['switchStrategy'] -and $state.switchStrategy) { $strategy = [string]$state.switchStrategy }
   $cands = @()
   foreach ($id in ($ids | Sort-Object -Unique)) {
     if ($id -eq $current) { continue }
@@ -227,9 +239,23 @@ function Select-NextAccount($state, [int]$current, $failed) {
       $freshReading = ($stateAt -and $stateAt -gt $failedAt -and $null -ne $pct -and $pct -lt 95)
       if (-not $freshReading -and $now -lt $failedAt.AddMinutes($RetryAfterMinutes)) { continue }
     }
-    $rank = 1000
-    if ($null -ne $pct) { $rank = $pct }
-    if ($state -and $state.recommendedId -and [int]$state.recommendedId -eq $id) { $rank = -1 }
+    # soonest upcoming reset (ms) for this account, from whichever known limit resets first in the future.
+    $reset = [double]::PositiveInfinity
+    foreach ($k in 'sessionResetAt', 'weeklyResetAt') {
+      if ($a -and $a.PSObject.Properties[$k] -and $null -ne $a.$k) {
+        $r = [double]$a.$k
+        if ($r -gt ($now.ToUniversalTime() - (Get-Date '1970-01-01')).TotalMilliseconds -and $r -lt $reset) { $reset = $r }
+      }
+    }
+    if ($strategy -eq 'soonest-reset') {
+      # Primary: soonest reset first. Recommended account still wins ties toward it.
+      $rank = $reset
+      if ($state -and $state.recommendedId -and [int]$state.recommendedId -eq $id) { $rank = $rank - 1 }
+    } else {
+      $rank = 1000
+      if ($null -ne $pct) { $rank = $pct }
+      if ($state -and $state.recommendedId -and [int]$state.recommendedId -eq $id) { $rank = -1 }
+    }
     $cands += [pscustomobject]@{ id = $id; rank = $rank }
   }
   if ($cands.Count -eq 0) { return $null }
