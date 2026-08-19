@@ -1,5 +1,6 @@
 import { shell } from 'electron';
 import type { BrowserContext, Page } from 'playwright-core';
+import { ensureAutoSwitchScript, writeAccountsFile } from './autoswitch';
 import {
   MAX_ACCOUNTS,
   type AccountId,
@@ -93,6 +94,21 @@ export class AccountManager {
         log.error('State listener failed', err);
       }
     }
+    this.scheduleAccountsFile();
+  }
+
+  private accountsFileTimer: NodeJS.Timeout | null = null;
+
+  /**
+   * Keeps `~/.claude-accounts/accounts.json` (read by the terminal auto-switch wrapper)
+   * in sync with what the dashboard shows. Debounced: state changes come in bursts.
+   */
+  private scheduleAccountsFile(): void {
+    if (this.accountsFileTimer) return;
+    this.accountsFileTimer = setTimeout(() => {
+      this.accountsFileTimer = null;
+      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch);
+    }, 500);
   }
 
   private account(id: AccountId): AccountState {
@@ -560,10 +576,19 @@ export class AccountManager {
         acc.terminal = status;
       }
       markOnboarded(id);
-      const launcher = ensureLauncher(id, this.helperDir, acc.name);
+      let wrapper: string | null = null;
+      if (process.platform === 'win32') {
+        try {
+          wrapper = ensureAutoSwitchScript(this.helperDir);
+        } catch (err) {
+          log.warn('Auto-switch wrapper unavailable, opening a plain terminal', err);
+        }
+      }
+      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch);
+      const launcher = ensureLauncher(id, this.helperDir, acc.name, wrapper);
       if (this.pathBinDir) {
         try {
-          ensureLauncher(id, this.pathBinDir, acc.name);
+          ensureLauncher(id, this.pathBinDir, acc.name, wrapper);
         } catch (err) {
           log.warn('Could not write PATH launcher', err);
         }
@@ -675,6 +700,11 @@ export class AccountManager {
 
   async shutdown(): Promise<void> {
     this.stopTimer();
+    if (this.accountsFileTimer) {
+      clearTimeout(this.accountsFileTimer);
+      this.accountsFileTimer = null;
+      writeAccountsFile(this.accounts, this.store.settings.terminalAutoSwitch);
+    }
     await this.browsers.closeAll();
   }
 }

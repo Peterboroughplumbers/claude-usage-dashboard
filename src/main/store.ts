@@ -141,5 +141,6 @@ export function sanitizeSettings(input: unknown): Settings {
       ? Math.min(100, Math.max(30, Math.round(Number(s.windowOpacity))))
       : 100,
     edgeAutoHide: Boolean(s.edgeAutoHide),
+    terminalAutoSwitch: s.terminalAutoSwitch === undefined ? true : Boolean(s.terminalAutoSwitch),
   };
 }
